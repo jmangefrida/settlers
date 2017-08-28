@@ -11,8 +11,8 @@ from random import randint
 class Map(object):
     def __init__(self):
        #self.blocks = np.arange(1000000).reshape(1000,1000)
-        self.height = 200
-        self.width = 320
+        self.height = 100
+        self.width = 160
         self.tile_size = 40
         self.build_list = []
         self.visited = np.empty( (self.width,self.height), dtype=np.int32)
@@ -20,7 +20,8 @@ class Map(object):
         self.blocks = np.random.random_integers(0, 7, (self.width,self.height))
         self.tiles = np.empty( (self.width,self.height), dtype=object)
         self.wood = np.empty([self.width,self.height], dtype=np.int32)
-        self.ore = np.empty([self.width,self.height], dtype=np.int32)
+        self.orem = np.empty([self.width,self.height], dtype=np.int32)
+        self.waterm = np.empty([self.width, self.height], dtype=np.int32)
         self.fish = np.empty([self.width,self.height], dtype=np.int32)
         #self.blocks = np.random.random([1000,1000], dtype=np.int64)
         self.dirt = pygame.image.load("files/dirt.png")
@@ -32,10 +33,19 @@ class Map(object):
         self.tree4 = pygame.image.load("files/tree4.png")
         self.tree5 = pygame.image.load("files/tree5.png")
         self.water = pygame.image.load("files/water.png")
+        self.test = pygame.image.load("files/person.bmp")
+        #self.mini = pygame.image.load("files/mini.bmp")
+        #print(pygame.image.tostring(self.mini, 'RGB'))
         self.tile_list = [self.dirt,self.ore,self.tree1,self.tree2,self.tree3,self.tree4,self.tree5,self.water]
         #self.set_tiles()
         self.spread = 0
-        self.build_map()
+        self.build_map('wood')
+        self.build_map('ore')
+        self.build_map('water')
+        self.mini = b''
+        self.build_mini()
+        self.minimap = pygame.image.fromstring(self.mini,(self.width,self.height), 'RGBA')
+        self.mini_rect = self.minimap.get_rect()
         #print(self.blocks)
 
     def set_tiles(self):
@@ -43,15 +53,36 @@ class Map(object):
              for y in range(self.height):
                  self.tiles[x,y] = self.tile_list[self.blocks[x,y]]
 
-    def build_map(self):
-        wood_seed = randint(50,70)
+    def build_map(self, resource):
+        if resource == 'wood':
+            seed_min = 50
+            seed_max = 70
+            rand_min = 0
+            rand_max = 1.24
+            resource_map = self.wood
+        if resource == 'ore':
+            seed_min = 2
+            seed_max = 4
+            rand_min = 0
+            rand_max = 1.2
+            resource_map = self.orem
+        if resource == 'water':
+            seed_min = 2
+            seed_max = 4
+            rand_min = 0
+            rand_max = 1.2
+            resource_map = self.waterm
+        visited = np.empty((self.width, self.height), dtype=np.int32)
+        visited.fill(0)
+        seed = randint(seed_min, seed_max)
         print('wood')
-        print(wood_seed)
-        for i in range(1, wood_seed):
+        print(seed)
+        for i in range(1, seed):
             x = randint(0, self.width-1)
             y = randint(0, self.height-1)
-            self.wood[x,y] = 250
-            self.visited[x,y] = 1
+            #self.wood[x,y] = 250
+            resource_map[x,y] = 250
+            visited[x,y] = 1
             self.build_list.append([x,y,250])
 
         while self.build_list:
@@ -61,42 +92,18 @@ class Map(object):
             for xn in range(x-1, x+2):
                 for yn in range(y-1, y+2):
                     if xn > 0 and xn < self.width and yn > 0 and yn < self.height:
-                        if self.visited[xn,yn] != 1:
-                            self.visited[xn, yn] = 1
-                            self.wood[xn, yn] = randint(0, int(prev[2] * 1.24))
-                            if self.wood[xn,yn] > 250:
-                                self.wood[xn,yn] = 250
-                            if self.wood[xn,yn] > 50:
-                                self.build_list.append([xn,yn,self.wood[xn,yn]])
-                                print(self.wood[xn,yn])
-                      
-            #self.rand_gen(0,0,randint(0,7))
+                        if visited[xn,yn] != 1:
+                            visited[xn, yn] = 1
+                            resource_map[xn, yn] = randint(rand_min, int(prev[2] * rand_max))
+                            if resource_map[xn,yn] > 250:
+                                resource_map[xn,yn] = 250
+                            if resource_map[xn,yn] > 50:
+                                self.build_list.append([xn, yn, resource_map[xn,yn]])
+                                #print(self.wood[xn,yn])
+
             #self.spread = 0
         self.tile_fill()
 
-
-
-    def rand_gen(self, x, y, value):
-        try:
-            self.spread = self.spread + 1
-            print('spread ' + str(x) + ' ' + str(y))
-            if x >= 0 and x < self.width and y >= 0 and y < self.height:
-                print('if')
-                if self.blocks[x,y]  > 9:
-                    return
-                #self.blocks[x,y] = value
-                self.tiles[x,y] = self.tile_list[value]
-                self.blocks[x,y] = 9
-                print(str(x) + " " + str(y))
-                if self.spread > 1000:
-                    return
-                if value > 1:
-                    self.rand_gen(x + 1, y, randint(0,7))
-                    self.rand_gen(x - 1, y, randint(0,7))
-                    self.rand_gen(x, y + 1, randint(0,7))
-                    self.rand_gen(x, y - 1, randint(0,7))
-        except:
-            print('bad')
 
     def tile_fill(self):
         for x in range(0, self.width):
@@ -114,8 +121,39 @@ class Map(object):
                     t = 5
                 if value > 200 and value <= 250:
                     t = 6
-                self.tiles[x,y] = self.tile_list[t]
+                self.tiles[x, y] = self.tile_list[t]
+
+        for x in range(0, self.width):
+            for y in range(0, self.height):
+                value = self.orem[x, y]
+                if value > 0:
+                    self.tiles[x, y] = self.tile_list[1]
+
+        for x in range(0, self.width):
+            for y in range(0, self.height):
+                value = self.waterm[x, y]
+                if value > 0:
+                    self.tiles[x, y] = self.tile_list[7]
         print(self.tiles)
+
+    def build_mini(self):
+        mdirt = b'\xcc\x66\x00\x66'
+        mtree = b'\x00\x99\x00\x66'
+        more = b'\x99\x99\x66\x99'
+        mwater = b'\x00\x66\xff\x99'
+        mini = b''
+        for y in range(0, self.height):
+            for x in range(0, self.width):
+                if self.orem[x, y] > 0:
+                    self.mini = self.mini + more
+                elif self.waterm[x, y] > 0:
+                    self.mini = self.mini + mwater
+                elif self.wood[x,y] > 0:
+                    self.mini = self.mini + mtree
+                else:
+                    self.mini = self.mini + mdirt
+                print(len(self.mini))
+
 
 class Person(object):
     def __init__(self, map, image, x, y):
@@ -177,7 +215,7 @@ class Job(object):
 
         except:
             print(str(x) + ' ' + str(y))
-            print( sys.exc_info()[0])
+            print(sys.exc_info()[0])
             print("error")
 
 
@@ -221,7 +259,7 @@ scale = 1.0
 
 
 
-character = pygame.image.load("files,,,/person.bmp")
+character = pygame.image.load("files/person.bmp")
 
 
 
@@ -297,15 +335,15 @@ while True:
 
     moverx = [map.tile_size,0]
     movery = [0,map.tile_size]
-    for i in range(0,map.width * map.tile_size,40):
+    for i in range(int(trans_y / map.tile_size), map.height * map.tile_size, map.tile_size):
         if i + trans_y > window_y:
             #print('break2')
             break
-        for x in range(0,map.height * map.tile_size,40):
+        for x in range(int(trans_x / map.tile_size),map.width * map.tile_size,map.tile_size):
             if x + trans_x > window_x:
                 #print('break1')
                 break
-            DISPLAYSURF.blit(map.tiles[x / map.tile_size, i / map.tile_size], rect)
+            DISPLAYSURF.blit(map.tiles[int(x / map.tile_size), int(i / map.tile_size)], rect)
             rect.move_ip(moverx)
         
         rect.x = trans_x
@@ -316,6 +354,24 @@ while True:
         persons.image_rect.x = persons.x + trans_x
         persons.image_rect.y = persons.y + trans_y
         DISPLAYSURF.blit(character, persons.image_rect)
+
+    #DISPLAYSURF.blit(map.minimap,map.mini_rect)
+    #pixObj = pygame.PixelArray(DISPLAYSURF)
+    #mdirt = b'/xcc/x66/x00'
+    #mtree = b'/x00/x99/x00'
+    #more = b'/x99/x99/x66'
+    #mwater = b'/x00/x66/xff'
+
+    #for y in range(0, map.height):
+    #    for x in range(0, map.width):
+    #        if map.wood[x,y] > 0:
+    #            pixObj[x,y] = 0x009900
+    #        else:
+    #            pixObj[x,y] = 0xCC6600
+    #del pixObj
+
+    DISPLAYSURF.blit(map.minimap, map.mini_rect)
+    pygame.draw.rect(DISPLAYSURF,(255,0,0),(-trans_x / map.tile_size, -trans_y / map.tile_size,window_x / map.tile_size,window_y / map.tile_size),1)
     pygame.display.flip()
     #print('flip')
     
@@ -342,7 +398,7 @@ while True:
                 trans_y = trans_y + event.rel[1]
                 if trans_y > 0:
                     trans_y = 0
-                if trans_y < -map.height * map.tile_size:
-                    trans_y = -map.height * map.tile_size
+                if trans_y < (-map.height * map.tile_size) + window_y:
+                    trans_y = (-map.height * map.tile_size) + window_y
     pygame.display.update()
 
