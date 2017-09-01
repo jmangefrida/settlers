@@ -24,6 +24,8 @@ class Map(object):
         self.orem = np.empty([self.width, self.height], dtype=np.int32)
         self.waterm = np.empty([self.width, self.height], dtype=np.int32)
         self.fish = np.empty([self.width, self.height], dtype=np.int32)
+        self.travel = np.empty((self.width, self.height), dtype=np.int32)
+        self.travel.fill(0)
         # self.blocks = np.random.random([1000,1000], dtype=np.int64)
         self.dirt = pygame.image.load("files/dirt.png")
         self.hide = pygame.image.load("files/hide.png")
@@ -134,6 +136,7 @@ class Map(object):
                 value = self.waterm[x, y]
                 if value > 0:
                     self.tiles[x, y] = self.tile_list[7]
+                    self.travel[x, y] = 1
         print(self.tiles)
 
     def build_mini(self):
@@ -191,6 +194,13 @@ class Person(object):
 
          if not self.task_list[0][1]:  # if the step list is empty
              self.task_list.pop(0)
+
+    def jp_move(self, x, y):
+        que = []
+
+        start_point = [self.x, self.y]
+        
+
 
 
 class Job(object):
@@ -276,6 +286,8 @@ class Explorer(Job):
                 y = y - 10
 
         self.person.task_list.append(['walk', steps, len(steps)])
+
+
 
 def do_scan(p):
     while True:
